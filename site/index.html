@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 资讯站</title>
+<style>
+  :root{
+    --bg:#f6f8fa; --card:#ffffff; --border:#d0d7de; --text:#1f2328; --muted:#57606a;
+    --accent:#0969da; --accent-bg:#ddf4ff; --ok:#1a7f37; --ok-bg:#dafbe1;
+    --err:#cf222e; --err-bg:#ffebe9; --warn:#9a6700; --warn-bg:#fff8c5;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;font-size:15px}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;position:sticky;top:0;z-index:10}
+  .brand h1{font-size:19px;font-weight:700}
+  .brand .sub{font-size:12px;color:var(--muted);margin-left:10px}
+  .actions{display:flex;align-items:center;gap:12px}
+  .status{font-size:12px;color:var(--muted)}
+  .status.warn{color:var(--warn)}
+  .status.err{color:var(--err)}
+  #refresh{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:6px;padding:6px 16px;font-size:13px;cursor:pointer}
+  #refresh:hover{background:var(--bg);border-color:var(--accent);color:var(--accent)}
+  .layout{display:flex;gap:20px;max-width:1280px;margin:20px auto;padding:0 20px;align-items:flex-start}
+  aside{width:264px;flex-shrink:0;background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;position:sticky;top:76px}
+  nav{display:flex;border-bottom:1px solid var(--border)}
+  nav button{flex:1;border:none;background:none;padding:11px 4px;font-size:13px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+  nav button.active{color:var(--accent);font-weight:600;border-bottom-color:var(--accent)}
+  nav button .cnt{font-size:11px;color:var(--muted);margin-left:2px}
+  .filelist{max-height:calc(100vh - 220px);overflow-y:auto}
+  .filelist .empty{padding:24px 16px;color:var(--muted);font-size:13px;text-align:center}
+  .filelist li{list-style:none;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;cursor:pointer;border-left:3px solid transparent;font-size:14px}
+  .filelist li:hover{background:var(--bg)}
+  .filelist li.active{background:var(--accent-bg);border-left-color:var(--accent);font-weight:600}
+  .filelist .wd{font-size:12px;color:var(--muted)}
+  .filelist .latest{font-size:11px;color:var(--ok);background:var(--ok-bg);border-radius:10px;padding:1px 8px;margin-left:6px}
+  main{flex:1;min-width:0}
+  .meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:13px;color:var(--muted)}
+  .meta .ghlink{font-size:12px}
+  article{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:32px 36px;min-height:300px}
+  .placeholder{color:var(--muted);text-align:center;padding:80px 0;font-size:14px}
+  .errorbox{background:var(--err-bg);color:var(--err);border:1px solid rgba(255,129,130,.4);border-radius:6px;padding:14px 18px;font-size:14px;line-height:1.7}
+  /* Markdown 排版 */
+  .markdown{line-height:1.8;word-wrap:break-word}
+  .markdown h1{font-size:1.55em;margin:.6em 0 .8em;padding-bottom:.3em;border-bottom:1px solid var(--border)}
+  .markdown h2{font-size:1.28em;margin:1.4em 0 .7em;padding-bottom:.25em;border-bottom:1px solid var(--border)}
+  .markdown h3{font-size:1.1em;margin:1.2em 0 .5em}
+  .markdown h4,.markdown h5,.markdown h6{font-size:1em;margin:1em 0 .4em}
+  .markdown p{margin:.6em 0}
+  .markdown ul,.markdown ol{margin:.6em 0;padding-left:1.8em}
+  .markdown li{margin:.25em 0}
+  .markdown blockquote{border-left:4px solid var(--border);color:var(--muted);padding:.2em 1em;margin:.8em 0;background:var(--bg);border-radius:0 6px 6px 0}
+  .markdown code{background:#eff1f3;border-radius:4px;padding:2px 5px;font-size:.88em;font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+  .markdown pre{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:14px;overflow-x:auto;margin:.8em 0}
+  .markdown pre code{background:none;padding:0}
+  .markdown table{border-collapse:collapse;margin:.8em 0;display:block;overflow-x:auto;max-width:100%}
+  .markdown th,.markdown td{border:1px solid var(--border);padding:6px 12px;font-size:.92em}
+  .markdown th{background:var(--bg)}
+  .markdown img{max-width:100%}
+  .markdown hr{border:none;border-top:1px solid var(--border);margin:1.4em 0}
+  footer{max-width:1280px;margin:0 auto 24px;padding:0 20px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:12px;color:var(--muted)}
+  @media (max-width:860px){
+    .layout{flex-direction:column}
+    aside{width:100%;position:static}
+    .filelist{max-height:240px}
+    article{padding:22px 18px}
+    .brand .sub{display:none}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><h1>AI 资讯站<span class="sub">AI 日报 · AI 周报 · Hacker News 每周热门 · 每个工作日 10:00 自动更新</span></h1></div>
+  <div class="actions"><span id="status" class="status">初始化…</span><button id="refresh">刷新</button></div>
+</header>
+<div class="layout">
+  <aside>
+    <nav id="tabs"></nav>
+    <div id="filelist" class="filelist"><div class="empty">加载中…</div></div>
+  </aside>
+  <main>
+    <div id="meta" class="meta"></div>
+    <article id="article" class="markdown"><div class="placeholder">加载中…</div></article>
+  </main>
+</div>
+<footer>
+  <span>数据源：<a href="https://github.com/QiangFu310/ai-news" target="_blank" rel="noopener">QiangFu310/ai-news</a> · 页面直连 GitHub API，无需后端</span>
+  <span id="quota"></span>
+</footer>
+<noscript><p style="text-align:center;padding:20px">本页面需要启用 JavaScript。</p></noscript>
+<script src="marked.min.js"></script>
+<script src="purify.min.js"></script>
+<script>
+'use strict';
+/* ================= 配置 ================= */
+const CFG = {
+  owner: 'QiangFu310',
+  repo: 'ai-news',
+  branch: 'main',
+  series: [
+    { dir: 'ai-daily',  name: 'AI 日报' },
+    { dir: 'ai-weekly', name: 'AI 周报' },
+    { dir: 'hn-weekly', name: 'HN 每周热门' }
+  ]
+};
+const API = 'https://api.github.com';
+const state = { series: CFG.series[0].dir, lists: {}, active: null, renderedKey: null };
+
+/* ================= 本地缓存（ETag 条件请求，304 不消耗 API 额度） ================= */
+function cget(k){ try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } }
+function cset(k, v){
+  try { localStorage.setItem(k, JSON.stringify(v)); }
+  catch(e){
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++){
+      const kk = localStorage.key(i);
+      if (kk && kk.indexOf('ainews:md:') === 0) keys.push(kk);
+    }
+    keys.slice(0, Math.ceil(keys.length / 2)).forEach(kk => localStorage.removeItem(kk));
+    try { localStorage.setItem(k, JSON.stringify(v)); } catch(e2){}
+  }
+}
+function noteQuota(resp){
+  const rem = resp.headers.get('x-ratelimit-remaining');
+  const lim = resp.headers.get('x-ratelimit-limit');
+  if (rem !== null) document.getElementById('quota').textContent = 'GitHub 匿名 API 额度 ' + rem + '/' + lim + '（按出口 IP 计）';
+}
+
+/* cacheKey 为 null 时不做条件缓存（正文按 sha 另行缓存） */
+async function apiGet(path, cacheKey){
+  const url = API + path;
+  const cached = cacheKey ? cget(cacheKey) : null;
+  const doFetch = conditional => {
+    const headers = {};
+    if (conditional && cached && cached.etag) headers['If-None-Match'] = cached.etag;
+    return fetch(url, { headers });
+  };
+  let resp;
+  try { resp = await doFetch(true); }
+  catch(e){
+    try { resp = await doFetch(false); }
+    catch(e2){
+      if (cached) return { data: cached.data, stale: true };
+      throw new Error('无法连接 GitHub API（网络或跨域受限）');
+    }
+  }
+  noteQuota(resp);
+  if (resp.status === 304 && cached) return { data: cached.data, fromCache: true };
+  if (resp.status === 404) return { data: null, notFound: true };
+  if (resp.status === 403 || resp.status === 429){
+    if (cached) return { data: cached.data, stale: true, rateLimited: true };
+    const reset = resp.headers.get('x-ratelimit-reset');
+    const t = reset ? new Date(reset * 1000).toLocaleTimeString('zh-CN', {hour:'2-digit', minute:'2-digit'}) : '稍后';
+    throw new Error('GitHub 匿名 API 额度用尽（共享出口 IP），约 ' + t + ' 恢复，请稍后刷新');
+  }
+  if (!resp.ok) throw new Error('GitHub API 返回 ' + resp.status);
+  const etag = resp.headers.get('ETag');
+  const data = await resp.json();
+  if (cacheKey && etag) cset(cacheKey, { etag, data, ts: Date.now() });
+  return { data };
+}
+
+async function loadList(dir){
+  const r = await apiGet('/repos/' + CFG.owner + '/' + CFG.repo + '/contents/' + dir + '?ref=' + CFG.branch, 'ainews:list:' + dir);
+  if (r.notFound || !r.data) return { files: [], stale: r.stale, rateLimited: r.rateLimited };
+  const files = r.data
+    .filter(f => f.type === 'file' && /^\d{4}-\d{2}-\d{2}\.md$/.test(f.name))
+    .sort((a, b) => b.name.localeCompare(a.name));
+  return { files, stale: r.stale, rateLimited: r.rateLimited };
+}
+
+/* ================= 正文 ================= */
+function b64ToText(b64){
+  const bin = atob(b64.replace(/\s/g, ''));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder('utf-8').decode(bytes);
+}
+async function loadMd(file){
+  const mdKey = 'ainews:md:' + file.path + ':' + file.sha;   /* sha 不变则内容不变，命中即零 API 调用 */
+  const hit = cget(mdKey);
+  if (hit && hit.text) return hit.text;
+  const r = await apiGet('/repos/' + CFG.owner + '/' + CFG.repo + '/contents/' + file.path + '?ref=' + CFG.branch, null);
+  if (!r.data) throw new Error('文件不存在或已被移除');
+  if (!r.data.content) throw new Error('文件超过 1MB，请点右上「在 GitHub 查看」');
+  const text = b64ToText(r.data.content);
+  cset(mdKey, { text });
+  return text;
+}
+
+/* ================= 渲染 ================= */
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function seriesName(dir){ const s = CFG.series.find(x => x.dir === dir); return s ? s.name : dir; }
+function weekday(name){
+  const p = name.slice(0, 10).split('-').map(Number);
+  return '周' + '日一二三四五六'[new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay()];
+}
+function setStatus(text, cls){
+  const el = document.getElementById('status');
+  el.textContent = text;
+  el.className = 'status' + (cls ? ' ' + cls : '');
+}
+function renderTabs(){
+  const nav = document.getElementById('tabs');
+  nav.innerHTML = '';
+  CFG.series.forEach(s => {
+    const r = state.lists[s.dir];
+    const btn = document.createElement('button');
+    btn.className = s.dir === state.series ? 'active' : '';
+    btn.innerHTML = esc(s.name) + '<span class="cnt">' + (r && r.files ? r.files.length : '·') + '</span>';
+    btn.onclick = () => { state.series = s.dir; state.active = null; state.renderedKey = null; renderTabs(); renderList(); openLatest(); };
+    nav.appendChild(btn);
+  });
+}
+function renderList(){
+  const box = document.getElementById('filelist');
+  const r = state.lists[state.series];
+  box.innerHTML = '';
+  if (!r || !r.files || !r.files.length){
+    box.innerHTML = '<div class="empty">' + (r && r.error ? esc(r.error) : '该系列暂无报告') + '</div>';
+    return;
+  }
+  r.files.forEach((f, i) => {
+    const li = document.createElement('li');
+    li.className = f.path === state.active ? 'active' : '';
+    const date = f.name.replace('.md', '');
+    li.innerHTML = '<span>' + esc(date) + (i === 0 ? '<span class="latest">最新</span>' : '') + '</span><span class="wd">' + weekday(f.name) + '</span>';
+    li.onclick = () => openFile(f);
+    box.appendChild(li);
+  });
+}
+function openLatest(){
+  const r = state.lists[state.series];
+  if (r && r.files && r.files.length) openFile(r.files[0]);
+  else {
+    document.getElementById('meta').innerHTML = '';
+    document.getElementById('article').innerHTML = '<div class="placeholder">' + (r && r.error ? esc(r.error) : '该系列暂无报告，生成后刷新即可看到') + '</div>';
+  }
+}
+async function openFile(file){
+  state.active = file.path;
+  renderList();
+  document.getElementById('meta').innerHTML =
+    '<span>' + esc(seriesName(state.series)) + ' · ' + esc(file.name.replace('.md', '')) + '（' + weekday(file.name) + '）</span>' +
+    '<a class="ghlink" href="https://github.com/' + CFG.owner + '/' + CFG.repo + '/blob/' + CFG.branch + '/' + file.path + '" target="_blank" rel="noopener">在 GitHub 查看 ↗</a>';
+  const key = file.path + ':' + file.sha;
+  if (state.renderedKey === key) return;   /* 内容未变，不重复渲染、不打断阅读 */
+  const article = document.getElementById('article');
+  article.innerHTML = '<div class="placeholder">加载正文…</div>';
+  try {
+    const md = await loadMd(file);
+    const html = DOMPurify.sanitize(marked.parse(md, { gfm: true, breaks: false }));
+    article.innerHTML = html;
+    article.querySelectorAll('a[href]').forEach(a => {
+      if (/^https?:/i.test(a.getAttribute('href'))) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+    });
+    state.renderedKey = key;
+    window.scrollTo({ top: 0 });
+  } catch(e){
+    article.innerHTML = '<div class="errorbox">' + esc(e.message) + '</div>';
+  }
+}
+
+/* ================= 同步 ================= */
+async function refreshAll(){
+  setStatus('同步中…');
+  document.getElementById('refresh').disabled = true;
+  const results = await Promise.all(CFG.series.map(async s => {
+    try { return [s.dir, await loadList(s.dir)]; }
+    catch(e){ return [s.dir, { files: [], error: e.message }]; }
+  }));
+  results.forEach(([dir, r]) => { state.lists[dir] = r; });
+  if (!(state.lists[state.series] && state.lists[state.series].files.length)){
+    const first = CFG.series.find(s => state.lists[s.dir] && state.lists[s.dir].files.length);
+    if (first) state.series = first.dir;
+  }
+  renderTabs();
+  renderList();
+  const files = (state.lists[state.series] || {}).files || [];
+  if (files.length){
+    const keep = files.find(f => f.path === state.active);
+    openFile(keep || files[0]);
+  } else openLatest();
+  const rs = Object.values(state.lists);
+  if (rs.some(r => r.rateLimited)) setStatus('API 限流，展示本地缓存', 'warn');
+  else if (rs.some(r => r.error)) setStatus('部分系列加载失败', 'err');
+  else if (rs.some(r => r.stale)) setStatus('网络受限，展示本地缓存', 'warn');
+  else setStatus('已同步 ' + new Date().toLocaleTimeString('zh-CN', {hour:'2-digit', minute:'2-digit'}));
+  document.getElementById('refresh').disabled = false;
+}
+document.getElementById('refresh').onclick = refreshAll;
+refreshAll();
+/* 每 10 分钟静默重校验目录（ETag 304 不耗额度）；正文 sha 未变不会打断阅读 */
+setInterval(refreshAll, 10 * 60 * 1000);
+</script>
+</body>
+</html>
